@@ -1,0 +1,327 @@
+
+<style>
+* { box-sizing: border-box; }
+.root { padding: 1.5rem 0; font-family: var(--font-sans); }
+.progress-bar { display: flex; gap: 6px; margin-bottom: 1.75rem; }
+.prog-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-border-secondary); transition: background .25s; }
+.prog-dot.done { background: #1D9E75; }
+.prog-dot.active { background: #185FA5; }
+.question-label { font-size: 11px; font-weight: 500; letter-spacing: 0.07em; color: var(--color-text-tertiary); text-transform: uppercase; margin-bottom: 0.5rem; }
+.question-text { font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 1.25rem; line-height: 1.45; }
+.options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+.opt-btn { background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 14px 16px; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.opt-btn:hover { background: var(--color-background-secondary); border-color: var(--color-border-primary); }
+.opt-btn .opt-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 3px; }
+.opt-btn .opt-sub { font-size: 12px; color: var(--color-text-secondary); line-height: 1.4; }
+.back-btn { font-size: 13px; color: var(--color-text-tertiary); background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 4px; }
+.back-btn:hover { color: var(--color-text-secondary); }
+.back-btn i { font-size: 14px; }
+
+.result-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+.result-header { padding: 1rem 1.25rem; border-bottom: 0.5px solid var(--color-border-tertiary); display: flex; align-items: flex-start; gap: 12px; }
+.result-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+.result-header-text .result-flow { font-size: 11px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 3px; }
+.result-header-text h3 { font-size: 16px; font-weight: 500; margin: 0; color: var(--color-text-primary); }
+.result-body { padding: 1rem 1.25rem; }
+.result-section { margin-bottom: 1rem; }
+.result-section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 0.5rem; }
+.pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { font-size: 12px; padding: 4px 12px; border-radius: 999px; }
+.pill-blue { background: #E6F1FB; color: #0C447C; }
+.pill-teal { background: #E1F5EE; color: #085041; }
+.pill-amber { background: #FAEEDA; color: #633806; }
+.pill-red { background: #FCEBEB; color: #791F1F; }
+.pill-purple { background: #EEEDFE; color: #3C3489; }
+.pill-gray { background: #F1EFE8; color: #444441; }
+.warning-box { background: var(--color-background-warning); border: 0.5px solid var(--color-border-warning); border-radius: var(--border-radius-md); padding: 10px 14px; font-size: 13px; color: var(--color-text-warning); display: flex; gap: 8px; align-items: flex-start; margin-top: 0.75rem; }
+.warning-box i { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.info-box { background: var(--color-background-info); border: 0.5px solid var(--color-border-info); border-radius: var(--border-radius-md); padding: 10px 14px; font-size: 13px; color: var(--color-text-info); display: flex; gap: 8px; align-items: flex-start; margin-top: 0.75rem; }
+.info-box i { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.restart-btn { margin-top: 1.25rem; font-size: 13px; color: var(--color-text-secondary); background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 8px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.restart-btn:hover { border-color: var(--color-border-primary); }
+.ask-btn { margin-top: 0.75rem; font-size: 13px; color: var(--color-text-info); background: var(--color-background-info); border: 0.5px solid var(--color-border-info); border-radius: var(--border-radius-md); padding: 8px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.ask-btn:hover { opacity: .85; }
+.token-row { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--color-text-secondary); margin-top: 0.5rem; }
+.token-badge { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 999px; }
+</style>
+
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">OAuth flow and setup decision guide — answer a series of questions to get a recommendation</h2>
+
+<div class="root" id="app"></div>
+
+<script>
+const QUESTIONS = [
+  {
+    id: 'user',
+    label: 'Step 1 of 4 — scope',
+    text: 'Does your flow involve a human user granting access?',
+    opts: [
+      { value: 'yes', title: 'Yes — user is involved', sub: 'A person logs in and approves access' },
+      { value: 'no', title: 'No — machine to machine', sub: 'Backend service, cron job, or script' }
+    ]
+  },
+  {
+    id: 'client_type',
+    label: 'Step 2 of 4 — client type',
+    text: 'What kind of application is your client?',
+    opts: [
+      { value: 'confidential', title: 'Confidential client', sub: 'Web app with a backend server' },
+      { value: 'spa', title: 'Public — SPA', sub: 'Runs entirely in the browser, no backend' },
+      { value: 'native', title: 'Public — native app', sub: 'Mobile or desktop app' }
+    ]
+  },
+  {
+    id: 'token',
+    label: 'Step 3 of 4 — token type',
+    text: 'What token type do you want the authorization server to issue?',
+    opts: [
+      { value: 'jwt', title: 'JWT (self-contained)', sub: 'Fast local validation, no DB needed' },
+      { value: 'opaque', title: 'Opaque (reference)', sub: 'Instant revocation, server-side only' }
+    ]
+  },
+  {
+    id: 'client_auth',
+    label: 'Step 4 of 4 — client authentication',
+    text: 'How should the client authenticate itself to the authorization server?',
+    opts: [
+      { value: 'secret', title: 'Client secret', sub: 'Simple shared secret — Basic or POST' },
+      { value: 'jwt_auth', title: 'Private key JWT', sub: 'Asymmetric — no shared secret' },
+      { value: 'mtls', title: 'Mutual TLS (mTLS)', sub: 'Certificate at transport layer' },
+      { value: 'pkce', title: 'PKCE only', sub: 'No secret — public client flow' }
+    ]
+  }
+];
+
+const M2M_QUESTIONS = [
+  {
+    id: 'client_auth_m2m',
+    label: 'Step 2 of 2 — client authentication',
+    text: 'How should the service authenticate itself to the authorization server?',
+    opts: [
+      { value: 'secret', title: 'Client secret', sub: 'Simple shared secret — Basic or POST' },
+      { value: 'jwt_auth', title: 'Private key JWT', sub: 'Asymmetric — no shared secret' },
+      { value: 'mtls', title: 'Mutual TLS (mTLS)', sub: 'Certificate at transport layer' }
+    ]
+  }
+];
+
+const M2M_TOKEN_Q = {
+  id: 'token_m2m',
+  label: 'Step 1 of 2 — token type',
+  text: 'What token type do you need?',
+  opts: [
+    { value: 'jwt', title: 'JWT (self-contained)', sub: 'Fast local validation, no DB needed' },
+    { value: 'opaque', title: 'Opaque (reference)', sub: 'Instant revocation, server-side lookup' }
+  ]
+};
+
+function buildResult(answers) {
+  const { user, client_type, token, client_auth, token_m2m, client_auth_m2m } = answers;
+  const isM2M = user === 'no';
+
+  if (isM2M) {
+    const tk = token_m2m || 'jwt';
+    const ca = client_auth_m2m || 'secret';
+    return {
+      flow: 'Client Credentials',
+      label: 'Machine-to-machine (no user)',
+      color: 'teal',
+      icon: 'ti-server',
+      iconBg: '#E1F5EE',
+      iconColor: '#0F6E56',
+      grants: ['Client credentials grant'],
+      token: tk === 'jwt' ? ['JWT — local validation', 'No introspection call per request'] : ['Opaque token', 'Introspection endpoint required per call'],
+      tokenPills: tk === 'jwt' ? ['jwt', 'fast validation'] : ['opaque', 'instant revocable'],
+      clientAuth: ca === 'secret'
+        ? ['Client secret (Basic or POST)', 'Register client_id + client_secret with auth server']
+        : ca === 'jwt_auth'
+          ? ['Private key JWT (private_key_jwt)', 'Sign assertion with private key — auth server verifies with registered public key']
+          : ['Mutual TLS (mTLS)', 'Present TLS client certificate — register CA or thumbprint at auth server'],
+      authPills: ca === 'secret' ? ['client_secret', 'Basic or POST'] : ca === 'jwt_auth' ? ['private_key_jwt', 'asymmetric'] : ['mTLS', 'tls_client_auth'],
+      userAuth: null,
+      warning: null,
+      tip: 'Client credentials is ideal for backend services, cron jobs, and scripts that act on their own behalf — no user session involved.',
+      ask: 'Show me an example client credentials token request with ' + (ca === 'secret' ? 'client secret' : ca === 'jwt_auth' ? 'private_key_jwt' : 'mTLS')
+    };
+  }
+
+  const tk = token || 'jwt';
+  const ca = client_auth || 'secret';
+  const ct = client_type || 'confidential';
+
+  let flow, label, color, icon, iconBg, iconColor, warning, tip, ask;
+  let grants = [];
+  let authPills = [];
+  let clientAuthLines = [];
+
+  if (ct === 'confidential') {
+    flow = 'Authorization code + ' + (ca === 'pkce' ? 'PKCE' : ca === 'secret' ? 'client secret' : ca === 'jwt_auth' ? 'private_key_jwt' : 'mTLS');
+    label = 'Confidential client with user';
+    color = 'blue';
+    iconBg = '#E6F1FB';
+    iconColor = '#185FA5';
+    icon = 'ti-server-2';
+    grants = ['Authorization code grant', ca !== 'pkce' ? 'PKCE recommended additionally' : 'PKCE as primary proof'];
+    if (ca === 'secret') {
+      clientAuthLines = ['Client secret (Basic or POST)', 'Present client_id + client_secret at /token endpoint'];
+      authPills = ['client_secret', 'confidential'];
+    } else if (ca === 'jwt_auth') {
+      clientAuthLines = ['Private key JWT (private_key_jwt)', 'Sign JWT with private key; auth server verifies with registered public key'];
+      authPills = ['private_key_jwt', 'asymmetric', 'no shared secret'];
+    } else if (ca === 'mtls') {
+      clientAuthLines = ['Mutual TLS (mTLS)', 'Present TLS client certificate; auth server validates against pre-registered CA or thumbprint'];
+      authPills = ['mTLS', 'tls_client_auth', 'transport-layer'];
+    } else {
+      clientAuthLines = ['PKCE (code_challenge / code_verifier)', 'One-time cryptographic proof — no stored secret needed'];
+      authPills = ['PKCE', 'code_verifier', 'one-time proof'];
+      warning = 'For a confidential client, PKCE alone is not recommended as the sole authentication mechanism. Pair it with a client secret or private_key_jwt.';
+    }
+    tip = 'The authorization code is exchanged server-to-server over a secure back-channel — the user never sees the token.';
+    ask = 'Show me the full authorization code flow HTTP requests for a confidential client using ' + (ca === 'secret' ? 'client secret' : ca === 'jwt_auth' ? 'private_key_jwt' : ca === 'mtls' ? 'mTLS' : 'PKCE');
+  } else {
+    const isNative = ct === 'native';
+    flow = 'Authorization code + PKCE';
+    label = isNative ? 'Native mobile/desktop app' : 'Single-page app (SPA)';
+    color = 'purple';
+    iconBg = '#EEEDFE';
+    iconColor = '#534AB7';
+    icon = isNative ? 'ti-device-mobile' : 'ti-browser';
+    grants = ['Authorization code grant', 'PKCE mandatory (public client)'];
+    clientAuthLines = ['PKCE only — no client_secret', 'code_verifier / code_challenge replaces the static secret'];
+    authPills = ['PKCE', 'public client', 'no secret stored'];
+    if (ca !== 'pkce' && ca !== undefined) {
+      warning = 'Public clients cannot store a client_secret securely. Secrets embedded in SPA or native app bundles can be extracted. PKCE is the correct mechanism here.';
+    }
+    tip = isNative ? 'Use a loopback redirect (127.0.0.1) or a custom URI scheme for the callback. Never use a web redirect URI for a native app.' : 'Never store access tokens in localStorage — prefer in-memory storage and short expiry with silent refresh via a hidden iframe or refresh token rotation.';
+    ask = 'Show me the PKCE authorization code flow for a ' + (isNative ? 'native mobile app' : 'single-page app');
+  }
+
+  const tokenLines = tk === 'jwt'
+    ? ['JWT (self-contained bearer token)', 'Resource server validates locally using issuer public key (JWKS) — no introspection call']
+    : ['Opaque token (reference token)', 'Resource server calls /introspect on each request — enables instant revocation'];
+  const tokenPills = tk === 'jwt' ? ['jwt', 'bearer', 'local validation'] : ['opaque', 'reference', 'introspection'];
+  if (tk === 'opaque') {
+    tip += ' With opaque tokens, your resource server must call /introspect on every API call — plan for the latency or cache introspection results with a short TTL.';
+  }
+
+  return {
+    flow, label, color, icon, iconBg, iconColor,
+    grants,
+    token: tokenLines,
+    tokenPills,
+    clientAuth: clientAuthLines,
+    authPills,
+    userAuth: ['Form-based login at /authorize endpoint (browser-facing)', 'MFA recommended for elevated-risk scopes'],
+    warning: warning || null,
+    tip,
+    ask
+  };
+}
+
+let state = { step: 0, answers: {}, flow: null };
+
+function getSteps() {
+  if (state.answers.user === 'no') {
+    return [QUESTIONS[0], M2M_TOKEN_Q, M2M_QUESTIONS[0]];
+  }
+  return QUESTIONS;
+}
+
+function totalSteps() { return getSteps().length; }
+
+function render() {
+  const app = document.getElementById('app');
+  if (state.flow) {
+    const r = state.flow;
+    const colorMap = { blue: 'pill-blue', teal: 'pill-teal', purple: 'pill-purple', amber: 'pill-amber' };
+    const pillCls = colorMap[r.color] || 'pill-gray';
+    app.innerHTML = `
+      <div class="result-card">
+        <div class="result-header">
+          <div class="result-icon" style="background:${r.iconBg}">
+            <i class="ti ${r.icon}" style="color:${r.iconColor}"></i>
+          </div>
+          <div class="result-header-text">
+            <div class="result-flow" style="color:${r.iconColor}">${r.flow}</div>
+            <h3>${r.label}</h3>
+          </div>
+        </div>
+        <div class="result-body">
+          <div class="result-section">
+            <div class="result-section-label">Grant type</div>
+            <div class="pill-row">${r.grants.map(g => `<span class="pill ${pillCls}">${g}</span>`).join('')}</div>
+          </div>
+          <div class="result-section">
+            <div class="result-section-label">Token type</div>
+            <div style="font-size:13px;color:var(--color-text-primary);margin-bottom:4px">${r.token[0]}</div>
+            <div style="font-size:12px;color:var(--color-text-secondary)">${r.token[1]}</div>
+            <div class="pill-row" style="margin-top:6px">${r.tokenPills.map(p => `<span class="pill pill-gray">${p}</span>`).join('')}</div>
+          </div>
+          <div class="result-section">
+            <div class="result-section-label">Client authentication</div>
+            <div style="font-size:13px;color:var(--color-text-primary);margin-bottom:4px">${r.clientAuth[0]}</div>
+            <div style="font-size:12px;color:var(--color-text-secondary)">${r.clientAuth[1]}</div>
+            <div class="pill-row" style="margin-top:6px">${r.authPills.map(p => `<span class="pill pill-blue">${p}</span>`).join('')}</div>
+          </div>
+          ${r.userAuth ? `
+          <div class="result-section">
+            <div class="result-section-label">User authentication</div>
+            ${r.userAuth.map(u => `<div style="font-size:13px;color:var(--color-text-primary);margin-bottom:3px">${u}</div>`).join('')}
+          </div>` : ''}
+          ${r.warning ? `<div class="warning-box"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span>${r.warning}</span></div>` : ''}
+          <div class="info-box"><i class="ti ti-info-circle" aria-hidden="true"></i><span>${r.tip}</span></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1rem">
+        <button class="ask-btn" onclick="sendPrompt('${r.ask}')"><i class="ti ti-arrow-up-right" aria-hidden="true"></i> ${r.ask} ↗</button>
+        <button class="restart-btn" onclick="restart()"><i class="ti ti-refresh" aria-hidden="true"></i> Start over</button>
+      </div>
+    `;
+    return;
+  }
+
+  const steps = getSteps();
+  const q = steps[state.step];
+  const dots = Array.from({ length: Math.max(totalSteps(), 3) }, (_, i) =>
+    `<div class="prog-dot ${i < state.step ? 'done' : i === state.step ? 'active' : ''}"></div>`
+  ).join('');
+
+  app.innerHTML = `
+    <div class="progress-bar">${dots}</div>
+    <div class="question-label">${q.label}</div>
+    <div class="question-text">${q.text}</div>
+    <div class="options-grid">
+      ${q.opts.map(o => `
+        <button class="opt-btn" onclick="choose('${q.id}', '${o.value}')">
+          <div class="opt-title">${o.title}</div>
+          <div class="opt-sub">${o.sub}</div>
+        </button>
+      `).join('')}
+    </div>
+    ${state.step > 0 ? `<button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i> Back</button>` : ''}
+  `;
+}
+
+function choose(id, value) {
+  state.answers[id] = value;
+  const steps = getSteps();
+  if (state.step < steps.length - 1) {
+    state.step++;
+    render();
+  } else {
+    state.flow = buildResult(state.answers);
+    render();
+  }
+}
+
+function goBack() {
+  if (state.step > 0) { state.step--; render(); }
+}
+
+function restart() {
+  state = { step: 0, answers: {}, flow: null };
+  render();
+}
+
+render();
+</script>
